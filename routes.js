@@ -8,9 +8,9 @@ module.exports = [
     method: "POST",
     path: "/predictions",
     handler: async (request, h) => {
-      const { id_user, predictions } = request.payload;
+      const { predictions } = request.payload;
 
-      if (!id_user || !predictions) {
+      if (!predictions) {
         return h.response({ error: "Input not complete" }).code(400);
       }
 
@@ -18,16 +18,21 @@ module.exports = [
       const emotionResponse = await gemini.generatePrediction(predictions);
 
       // Menghapus karakter newline dari properti 'emotion'
-      const emotion = emotionResponse.replace(/ \n/g, "");
-      //   Waktu sekarang
+      const emotion = emotionResponse
+        .replace(/ \n/g, "")
+        .replace(/\n/g, "")
+        .replace(/\n\n/g, "")
+        .replace(/\n\n\n/g, "");
+
+      // Waktu sekarang
       const datetime = moment()
         .tz("Asia/Jakarta")
         .format("YYYY-MM-DD HH:mm:ss");
 
       // Menyimpan data ke tabel tbl_prediction
       const query =
-        "INSERT INTO tbl_prediction (id_user, predictions, emotion, datetime) VALUES (?, ?, ?, ?)";
-      const values = [id_user, predictions, emotion, datetime];
+        "INSERT INTO tbl_prediction (predictions, emotion, datetime) VALUES (?, ?, ?)";
+      const values = [predictions, emotion, datetime];
 
       mysqlConnection.query(query, values, (err) => {
         if (err) {
@@ -40,41 +45,45 @@ module.exports = [
       });
 
       // Mengembalikan respons JSON tanpa karakter newline
-      return { id_user, predictions, emotion, datetime };
+      return h.response({ predictions, emotion, datetime }).code(201);
     },
   },
+  // Route GET untuk mendapatkan semua predictions
+  // Route GET untuk mendapatkan semua predictions
   {
     method: "GET",
-    path: "/predictions/{id_user}",
-    handler: (request, h) => {
-      const { id_user } = request.params;
-
-      return new Promise((resolve, reject) => {
-        // Query to select predictions for a user
-        const query = "SELECT * FROM tbl_prediction WHERE id_user = ?";
-        mysqlConnection.query(query, [id_user], (err, results) => {
-          if (err) {
-            console.error("Error retrieving data from MySQL:", err);
-            return reject(
-              h
-                .response({ error: "Failed to retrieve data from MySQL" })
-                .code(500)
-            );
-          }
-          console.log("Data retrieved from MySQL successfully");
-          return resolve(results);
+    path: "/predictions",
+    handler: async (request, h) => {
+      try {
+        // Membungkus query dalam Promise
+        const results = await new Promise((resolve, reject) => {
+          const query = "SELECT * FROM tbl_prediction";
+          mysqlConnection.query(query, (err, results) => {
+            if (err) {
+              return reject(err);
+            }
+            resolve(results);
+          });
         });
-      });
+
+        console.log("Data retrieved from MySQL successfully");
+        return h.response(results).code(200);
+      } catch (error) {
+        console.error("Error retrieving data from MySQL:", error);
+        return h
+          .response({ error: "Failed to retrieve data from MySQL" })
+          .code(500);
+      }
     },
   },
-  // Routes untuk rekomendasi
+  // Route POST untuk menambahkan rekomendasi
   {
     method: "POST",
     path: "/recomendation",
     handler: async (request, h) => {
-      const { id_user, emotion } = request.payload;
+      const { emotion } = request.payload;
 
-      if (!id_user || !emotion) {
+      if (!emotion) {
         return h.response({ error: "Input not complete" }).code(400);
       }
 
@@ -90,22 +99,24 @@ module.exports = [
 
         // Menyimpan data ke tabel recommendations
         const query =
-          "INSERT INTO tbl_recommendations (id_user, emotion, recommendation, link, datetime) VALUES (?, ?, ?, ?, ?)";
-        const values = [id_user, emotion, recommendation, link, datetime];
+          "INSERT INTO tbl_recommendations (emotion, recommendation, link, datetime) VALUES (?, ?, ?, ?)";
+        const values = [emotion, recommendation, link, datetime];
 
-        mysqlConnection.query(query, values, (err, result) => {
-          if (err) {
-            console.error("Error saving data to MySQL:", err);
-            return h
-              .response({ error: "Failed to save data to MySQL" })
-              .code(500);
-          }
-          console.log("Data saved to MySQL successfully");
+        // Membungkus query dalam Promise
+        await new Promise((resolve, reject) => {
+          mysqlConnection.query(query, values, (err, result) => {
+            if (err) {
+              console.error("Error saving data to MySQL:", err);
+              return reject(err); // Melempar error jika query gagal
+            }
+            console.log("Data saved to MySQL successfully");
+            resolve(result);
+          });
         });
 
         // Mengembalikan respons JSON
         return h
-          .response({ id_user, emotion, recommendation, link, datetime })
+          .response({ emotion, recommendation, link, datetime })
           .code(201);
       } catch (error) {
         console.error("Error processing request:", error);
@@ -113,6 +124,7 @@ module.exports = [
       }
     },
   },
+
   // Route GET untuk mendapatkan semua rekomendasi
   {
     method: "GET",
@@ -122,48 +134,15 @@ module.exports = [
         // Query untuk mengambil semua data rekomendasi
         const query = "SELECT * FROM tbl_recommendations";
 
-        // Gunakan async/await untuk menjalankan query dan tunggu hasilnya
+        // Membungkus query dalam Promise
         const results = await new Promise((resolve, reject) => {
           mysqlConnection.query(query, (err, results) => {
             if (err) {
               console.error("Error retrieving data from MySQL:", err);
-              reject(err); // Melempar error jika query gagal
-            } else {
-              console.log("Data retrieved from MySQL successfully");
-              resolve(results); // Mengembalikan hasil query jika berhasil
+              return reject(err); // Melempar error jika query gagal
             }
-          });
-        });
-
-        // Mengembalikan respons JSON dengan hasil query
-        return h.response(results).code(200);
-      } catch (error) {
-        console.error("Error processing request:", error);
-        return h.response({ error: "Failed to process request" }).code(500);
-      }
-    },
-  },
-  // Route GET untuk mendapatkan rekomendasi berdasarkan ID pengguna
-  {
-    method: "GET",
-    path: "/recommendations/{id_user}",
-    handler: async (request, h) => {
-      const { id_user } = request.params;
-
-      try {
-        // Query untuk mengambil data rekomendasi berdasarkan ID pengguna
-        const query = "SELECT * FROM tbl_recommendations WHERE id_user = ?";
-
-        // Gunakan async/await untuk menjalankan query dan tunggu hasilnya
-        const results = await new Promise((resolve, reject) => {
-          mysqlConnection.query(query, [id_user], (err, results) => {
-            if (err) {
-              console.error("Error retrieving data from MySQL:", err);
-              reject(err); // Melempar error jika query gagal
-            } else {
-              console.log("Data retrieved from MySQL successfully");
-              resolve(results); // Mengembalikan hasil query jika berhasil
-            }
+            console.log("Data retrieved from MySQL successfully");
+            resolve(results); // Mengembalikan hasil query jika berhasil
           });
         });
 

@@ -54,7 +54,7 @@ module.exports = {
 
     // Panggil API kedua untuk mendapatkan link rekomendasi
     const linkResponse = await callGeminiApi(
-      `Give link, only link, link url, about what i feell  now is  ${inputText}, link recomendation, only answer with url link, only one link url, link url must active can be used, dont use youtube link, link url active link.`
+      `about what i feell  now is ${inputText}, link recomendation, only answer with url link, answer only url, dont use youtube url, find link priority from psychologytoday.com, give link, only link, link url, `
     );
 
     // Pisahkan respons menjadi rekomendasi dan link rekomendasi
