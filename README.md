@@ -1,9 +1,50 @@
-05/06/24
+# Capstone Project
 
-Post
-http://localhost:3000/recomendation
-http://localhost:3000/predictions
+## Overview
 
-Get All Data
-http://localhost:3000/recommendations
-http://localhost:3000/predictions
+This project is a recommendation system built using Node.js for the Capstone Project.
+
+## Installation
+
+1. Clone the repository.
+2. Install dependencies with `npm install`.
+
+## Usage
+
+### Endpoints
+
+#### POST Requests:
+
+- To create a recommendation:
+  - Endpoint: `http://localhost:3000/recomendation`
+  - Payload: JSON object with `id_user` and `emotion`.
+- To create a prediction:
+  - Endpoint: `http://localhost:3000/predictions`
+  - Payload: JSON object with `id_user` and `predictions`.
+
+#### GET Requests:
+
+- To retrieve all recommendations:
+  - Endpoint: `http://localhost:3000/recommendations`
+- To retrieve all predictions:
+  - Endpoint: `http://localhost:3000/predictions`
+
+## Development
+
+- Run the development server with `npm run start:dev`.
+- The server will run on `http://localhost:3000`.
+
+## Dependencies
+
+- [@hapi/hapi](https://www.npmjs.com/package/@hapi/hapi): For building the server.
+- [@tensorflow/tfjs](https://www.npmjs.com/package/@tensorflow/tfjs): For machine learning capabilities.
+- [axios](https://www.npmjs.com/package/axios): For making HTTP requests.
+- [dotenv](https://www.npmjs.com/package/dotenv): For loading environment variables.
+- [moment-timezone](https://www.npmjs.com/package/moment-timezone): For handling timezones.
+- [mysql](https://www.npmjs.com/package/mysql): For interacting with MySQL database.
+- [nodemon](https://www.npmjs.com/package/nodemon): For automatic server restarts during development.
+
+## License
+
+This project is licensed under the ISC License. See the [LICENSE](LICENSE) file for details.
+
