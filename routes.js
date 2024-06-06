@@ -1,12 +1,13 @@
-const moment = require("moment-timezone"); // Tambahkan ini untuk menggunakan moment-timezone
+const moment = require("moment-timezone");
 const gemini = require("./api/predictions");
-const recomendation = require("./api/recomendation"); // Ubah ini menjadi recomendation
+const recomendation = require("./api/recomendation");
+const chat = require("./api/chat");
 const mysqlConnection = require("./database/mysqlConnection");
 
 module.exports = [
   {
     method: "POST",
-    path: "/predictions",
+    path: "/api/predictions",
     handler: async (request, h) => {
       const { predictions } = request.payload;
 
@@ -49,7 +50,6 @@ module.exports = [
     },
   },
   // Route GET untuk mendapatkan semua predictions
-  // Route GET untuk mendapatkan semua predictions
   {
     method: "GET",
     path: "/predictions",
@@ -79,42 +79,43 @@ module.exports = [
   // Route POST untuk menambahkan rekomendasi
   {
     method: "POST",
-    path: "/recomendation",
+    path: "/api/recomendation",
     handler: async (request, h) => {
-      const { emotion } = request.payload;
+      const { emotion: emotionResponse } = request.payload;
 
-      if (!emotion) {
+      if (!emotionResponse) {
         return h.response({ error: "Input not complete" }).code(400);
       }
 
       try {
-        // Memanggil fungsi generateRecomendation dari modul recomendation
-        const { recommendation, link } =
-          await recomendation.generateRecomendation(emotion);
+        const emotion = emotionResponse
+          .replace(/\\+/g, "") // Menghapus karakter escape
+          .replace(/\n+/g, "") // Menghapus karakter newline
+          .replace(/\"+/g, "") // Menghapus karakter kutip ganda
+          .replace(/\s\s+/g, " "); // Menghapus spasi ganda
 
-        // Waktu sekarang
+        const { recommendation, link } =
+          await recomendation.generateRecomendation(emotion); // Menggunakan nama fungsi yang benar
+
         const datetime = moment()
           .tz("Asia/Jakarta")
           .format("YYYY-MM-DD HH:mm:ss");
 
-        // Menyimpan data ke tabel recommendations
         const query =
           "INSERT INTO tbl_recommendations (emotion, recommendation, link, datetime) VALUES (?, ?, ?, ?)";
         const values = [emotion, recommendation, link, datetime];
 
-        // Membungkus query dalam Promise
         await new Promise((resolve, reject) => {
           mysqlConnection.query(query, values, (err, result) => {
             if (err) {
               console.error("Error saving data to MySQL:", err);
-              return reject(err); // Melempar error jika query gagal
+              return reject(err);
             }
             console.log("Data saved to MySQL successfully");
             resolve(result);
           });
         });
 
-        // Mengembalikan respons JSON
         return h
           .response({ emotion, recommendation, link, datetime })
           .code(201);
@@ -124,7 +125,6 @@ module.exports = [
       }
     },
   },
-
   // Route GET untuk mendapatkan semua rekomendasi
   {
     method: "GET",
@@ -151,6 +151,40 @@ module.exports = [
       } catch (error) {
         console.error("Error processing request:", error);
         return h.response({ error: "Failed to process request" }).code(500);
+      }
+    },
+  },
+
+  {
+    method: "POST",
+    path: "/api/chat",
+    handler: async (request, h) => {
+      const { chat: chatInput } = request.payload;
+
+      if (!chatInput) {
+        return h.response({ error: "Input not complete" }).code(400);
+      }
+
+      try {
+        const chatResponse = await chat.generateChat(chatInput);
+        let resultChat = chatResponse
+          .replace(/\\+/g, "") // Menghapus karakter escape
+          .replace(/\n+/g, "") // Menghapus karakter newline
+          .replace(/\"+/g, "") // Menghapus karakter kutip ganda
+          .replace(/\s\s+/g, " "); // Menghapus spasi ganda
+
+        const datetime = moment()
+          .tz("Asia/Jakarta")
+          .format("YYYY-MM-DD HH:mm:ss");
+
+        return h
+          .response({ chat: chatInput, result_chat: resultChat, datetime })
+          .code(201);
+      } catch (error) {
+        console.error("Error generating chat response:", error);
+        return h
+          .response({ error: "Failed to generate chat response" })
+          .code(500);
       }
     },
   },

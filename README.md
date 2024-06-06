@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a recommendation system built using Node.js for the Capstone Project.
+This project is a recommendation system built using Node.js for the Capstone Project. It utilizes machine learning capabilities, HTTP requests, and interacts with a MySQL database to provide recommendations and predictions based on user input.
 
 ## Installation
 
@@ -16,11 +16,14 @@ This project is a recommendation system built using Node.js for the Capstone Pro
 #### POST Requests:
 
 - To create a recommendation:
-  - Endpoint: `http://localhost:3000/recomendation`
-  - Payload: JSON object with `id_user` and `emotion`.
+  - Endpoint: `http://localhost:3000/api/recomendation`
+  - Payload: JSON object with `emotion`.
 - To create a prediction:
-  - Endpoint: `http://localhost:3000/predictions`
-  - Payload: JSON object with `id_user` and `predictions`.
+  - Endpoint: `http://localhost:3000/api/predictions`
+  - Payload: JSON object with `predictions`.
+- To generate chat responses:
+  - Endpoint: `http://localhost:3000/api/chat`
+  - Payload: JSON object with `chat`.
 
 #### GET Requests:
 
@@ -31,6 +34,7 @@ This project is a recommendation system built using Node.js for the Capstone Pro
 
 ## Development
 
+- Run the server with `npm run start`.
 - Run the development server with `npm run start:dev`.
 - The server will run on `http://localhost:3000`.
 
@@ -43,8 +47,3 @@ This project is a recommendation system built using Node.js for the Capstone Pro
 - [moment-timezone](https://www.npmjs.com/package/moment-timezone): For handling timezones.
 - [mysql](https://www.npmjs.com/package/mysql): For interacting with MySQL database.
 - [nodemon](https://www.npmjs.com/package/nodemon): For automatic server restarts during development.
-
-## License
-
-This project is licensed under the ISC License. See the [LICENSE](LICENSE) file for details.
-
