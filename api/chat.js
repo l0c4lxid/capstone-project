@@ -48,7 +48,7 @@ async function callGeminiApi(inputText) {
 module.exports = {
   generateChat: async (inputText) => {
     const response = await callGeminiApi(
-      `write a couple paragraphs about ${inputText}, should me around about healty, if not about healty just say "i cant help."`
+      `write a couple paragraphs about ${inputText}, should me around about healty, if not about healty just say "i cant help, remmerber only a paragraph about healty is allowed" `
     );
     return response;
   },

@@ -1,6 +1,6 @@
 // mysqlConnection.js
 
-const mysql = require("mysql");
+const mysql = require("mysql2");
 
 // Buat koneksi ke MySQL
 const connection = mysql.createConnection({
@@ -8,6 +8,7 @@ const connection = mysql.createConnection({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
+  connectTimeout: 1000000, // Timeout in milliseconds
 });
 
 connection.connect((err) => {

@@ -1,10 +1,80 @@
 const moment = require("moment-timezone");
+const path = require("path");
+const fs = require("fs");
 const gemini = require("./api/predictions");
-const recomendation = require("./api/recomendation");
+const { generateRecomendation } = require("./api/recomendation"); // Import fungsi generateRecomendation
 const chat = require("./api/chat");
 const mysqlConnection = require("./database/mysqlConnection");
+const recommendationsData = require("./database/recommendations");
+const tf = require("@tensorflow/tfjs-node");
+const Joi = require("joi");
+const { tokenize } = require("./models/tokenize");
+const { loadModel, predict } = require("./models/model");
+const tokenizer = require("./models/tokenizer.json"); // Load your tokenizer
+const { inverseEncodeEmotion } = require("./models/emotion");
 
 module.exports = [
+  {
+    method: "POST",
+    path: "/api/v2/predictions",
+    options: {
+      validate: {
+        payload: Joi.object({
+          text: Joi.string().required(),
+        }),
+      },
+    },
+    // Di dalam handler Anda, gunakan fungsi inverseEncodeEmotion untuk mendapatkan label emosi dari indeks yang diprediksi
+    handler: async (request, h) => {
+      const { text } = request.payload;
+
+      // Tokenize the input text
+      const tokens = tokenize(text, tokenizer);
+
+      // Load the model and make predictions
+      try {
+        const model = await loadModel();
+        const prediction = await predict(model, tokens);
+
+        // Mendapatkan indeks dengan probabilitas terbesar
+        const predictedEmotionIndex = prediction[0].indexOf(
+          Math.max(...prediction[0])
+        );
+        // Mendapatkan label emosi dari indeks yang diprediksi menggunakan fungsi inverse encoding
+        const predictedEmotion = inverseEncodeEmotion(predictedEmotionIndex);
+
+        const datetime = moment()
+          .tz("Asia/Jakarta")
+          .format("YYYY-MM-DD HH:mm:ss");
+
+        const query =
+          "INSERT INTO tbl_prediction (predictions, emotion, datetime) VALUES (?, ?, ?)";
+        const values = [text, predictedEmotion, datetime];
+
+        await new Promise((resolve, reject) => {
+          mysqlConnection.query(query, values, (err, result) => {
+            if (err) {
+              console.error("Error saving data to MySQL:", err);
+              return reject(err);
+            }
+            console.log("Data saved to MySQL successfully");
+            resolve(result);
+          });
+        });
+
+        return h
+          .response({
+            predict: text,
+            emotion: predictedEmotion,
+            datetime: datetime,
+          })
+          .code(201);
+      } catch (error) {
+        console.error("Error processing request:", error);
+        return h.response({ error: "Failed to process request" }).code(500);
+      }
+    },
+  },
   {
     method: "POST",
     path: "/api/predictions",
@@ -54,11 +124,21 @@ module.exports = [
     method: "GET",
     path: "/predictions",
     handler: async (request, h) => {
+      const { emotion } = request.query;
+
       try {
-        // Membungkus query dalam Promise
+        // Build the query with optional emotion filtering
+        let query = "SELECT * FROM tbl_prediction";
+        const queryParams = [];
+
+        if (emotion) {
+          query += " WHERE emotion = ?";
+          queryParams.push(emotion);
+        }
+
+        // Query the database to get predictions
         const results = await new Promise((resolve, reject) => {
-          const query = "SELECT * FROM tbl_prediction";
-          mysqlConnection.query(query, (err, results) => {
+          mysqlConnection.query(query, queryParams, (err, results) => {
             if (err) {
               return reject(err);
             }
@@ -66,8 +146,14 @@ module.exports = [
           });
         });
 
+        // Format datetime before sending the response
+        const formattedResults = results.map((result) => ({
+          ...result,
+          datetime: moment(result.datetime).format("YYYY-MM-DD HH:mm:ss"), // Format datetime here
+        }));
+
         console.log("Data retrieved from MySQL successfully");
-        return h.response(results).code(200);
+        return h.response(formattedResults).code(200);
       } catch (error) {
         console.error("Error retrieving data from MySQL:", error);
         return h
@@ -92,18 +178,53 @@ module.exports = [
           .replace(/\\+/g, "") // Menghapus karakter escape
           .replace(/\n+/g, "") // Menghapus karakter newline
           .replace(/\"+/g, "") // Menghapus karakter kutip ganda
+          .replace(/\s+/g, " ") // Menghapus spasi ganda
           .replace(/\s\s+/g, " "); // Menghapus spasi ganda
 
-        const { recommendation, link } =
-          await recomendation.generateRecomendation(emotion); // Menggunakan nama fungsi yang benar
+        let responsePayload = { emotion };
+
+        // Dapatkan rekomendasi menggunakan API
+        const { recommendation } = await generateRecomendation(emotion);
+
+        responsePayload.recommendation = recommendation;
+
+        // Dapatkan link tambahan dari recommendationsData jika tersedia
+        if (recommendationsData.hasOwnProperty(emotion.toLowerCase())) {
+          const recData = recommendationsData[emotion.toLowerCase()];
+          recData.forEach((item, index) => {
+            responsePayload[`title_${index + 1}`] = item.title;
+            responsePayload[`link_${index + 1}`] = item.url;
+          });
+        } else {
+          responsePayload.title_1 = "No specific recommendation";
+          responsePayload.link_1 = "No specific link";
+        }
 
         const datetime = moment()
           .tz("Asia/Jakarta")
           .format("YYYY-MM-DD HH:mm:ss");
 
+        responsePayload.datetime = datetime;
+
         const query =
           "INSERT INTO tbl_recommendations (emotion, recommendation, link, datetime) VALUES (?, ?, ?, ?)";
-        const values = [emotion, recommendation, link, datetime];
+
+        // Prepare link object
+        const linkObject = {};
+        for (let i = 1; i <= 5; i++) {
+          linkObject[`title_${i}`] = responsePayload[`title_${i}`];
+          linkObject[`link_${i}`] = responsePayload[`link_${i}`];
+        }
+
+        // Convert link object to JSON string
+        const linkString = JSON.stringify(linkObject);
+
+        const values = [
+          emotion,
+          recommendation,
+          linkString, // Save link object as JSON string
+          datetime,
+        ];
 
         await new Promise((resolve, reject) => {
           mysqlConnection.query(query, values, (err, result) => {
@@ -116,9 +237,7 @@ module.exports = [
           });
         });
 
-        return h
-          .response({ emotion, recommendation, link, datetime })
-          .code(201);
+        return h.response(responsePayload).code(201);
       } catch (error) {
         console.error("Error processing request:", error);
         return h.response({ error: "Failed to process request" }).code(500);
@@ -128,29 +247,43 @@ module.exports = [
   // Route GET untuk mendapatkan semua rekomendasi
   {
     method: "GET",
-    path: "/recommendations",
+    path: "/recomendations",
     handler: async (request, h) => {
-      try {
-        // Query untuk mengambil semua data rekomendasi
-        const query = "SELECT * FROM tbl_recommendations";
+      const { emotion } = request.query;
 
-        // Membungkus query dalam Promise
+      try {
+        // Build the query with optional emotion filtering
+        let query = "SELECT * FROM tbl_recommendations";
+        const queryParams = [];
+
+        if (emotion) {
+          query += " WHERE emotion = ?";
+          queryParams.push(emotion);
+        }
+
+        // Query the database to get recommendations
         const results = await new Promise((resolve, reject) => {
-          mysqlConnection.query(query, (err, results) => {
+          mysqlConnection.query(query, queryParams, (err, results) => {
             if (err) {
-              console.error("Error retrieving data from MySQL:", err);
-              return reject(err); // Melempar error jika query gagal
+              return reject(err);
             }
-            console.log("Data retrieved from MySQL successfully");
-            resolve(results); // Mengembalikan hasil query jika berhasil
+            resolve(results);
           });
         });
 
-        // Mengembalikan respons JSON dengan hasil query
-        return h.response(results).code(200);
+        // Format datetime before sending the response
+        const formattedResults = results.map((result) => ({
+          ...result,
+          datetime: moment(result.datetime).format("YYYY-MM-DD HH:mm:ss"), // Format datetime here
+        }));
+
+        console.log("Data retrieved from MySQL successfully");
+        return h.response(formattedResults).code(200);
       } catch (error) {
-        console.error("Error processing request:", error);
-        return h.response({ error: "Failed to process request" }).code(500);
+        console.error("Error retrieving data from MySQL:", error);
+        return h
+          .response({ error: "Failed to retrieve data from MySQL" })
+          .code(500);
       }
     },
   },
@@ -171,7 +304,9 @@ module.exports = [
           .replace(/\\+/g, "") // Menghapus karakter escape
           .replace(/\n+/g, "") // Menghapus karakter newline
           .replace(/\"+/g, "") // Menghapus karakter kutip ganda
-          .replace(/\s\s+/g, " "); // Menghapus spasi ganda
+          .replace(/\*\*([^*]*)\*\*/g, "$1") // Menghapus **bold** teks
+          .replace(/\s\s+/g, " ") // Menghapus spasi ganda
+          .replace(/\*/g, "");
 
         const datetime = moment()
           .tz("Asia/Jakarta")
