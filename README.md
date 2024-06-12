@@ -15,22 +15,41 @@ This project is a recommendation system built using Node.js for the Capstone Pro
 
 #### POST Requests:
 
-- To create a recommendation:
-  - Endpoint: `http://localhost:3000/api/recomendation`
-  - Payload: JSON object with `emotion`.
-- To create a prediction:
+- **Create Prediction**:
+
+  - Endpoint: `http://localhost:3000/api/v2/predictions`
+  - Payload: JSON object with `text`.
+  - Description: Creates a prediction for the given input text using a machine learning model. The predicted emotion along with the input text and timestamp are stored in the MySQL database.
+
+- **Create Prediction (Legacy)**:
+
   - Endpoint: `http://localhost:3000/api/predictions`
   - Payload: JSON object with `predictions`.
-- To generate chat responses:
+  - Description: Creates a prediction for the given input using a legacy prediction module. The predicted emotion along with the input text and timestamp are stored in the MySQL database.
+
+- **Create Recommendation**:
+
+  - Endpoint: `http://localhost:3000/api/recomendation`
+  - Payload: JSON object with `emotion`.
+  - Description: Creates a recommendation based on the provided emotion. The recommendation, relevant links, and timestamp are stored in the MySQL database.
+
+- **Generate Chat Response**:
   - Endpoint: `http://localhost:3000/api/chat`
   - Payload: JSON object with `chat`.
+  - Description: Generates a chat response based on the input chat message. The generated response, along with the input message and timestamp, are returned.
 
 #### GET Requests:
 
-- To retrieve all recommendations:
-  - Endpoint: `http://localhost:3000/recommendations`
-- To retrieve all predictions:
+- **Get Predictions**:
+
   - Endpoint: `http://localhost:3000/predictions`
+  - Query Parameter: `emotion` (optional) - Filter predictions by emotion.
+  - Description: Retrieves all predictions from the MySQL database. Optionally filters predictions by emotion.
+
+- **Get Recommendations**:
+  - Endpoint: `http://localhost:3000/recomendations`
+  - Query Parameter: `emotion` (optional) - Filter recommendations by emotion.
+  - Description: Retrieves all recommendations from the MySQL database. Optionally filters recommendations by emotion.
 
 ## Development
 
