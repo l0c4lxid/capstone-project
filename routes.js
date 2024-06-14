@@ -1,4 +1,6 @@
+require("dotenv").config();
 const moment = require("moment-timezone");
+const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
 const gemini = require("./api/predictions");
@@ -10,8 +12,18 @@ const tf = require("@tensorflow/tfjs-node");
 const Joi = require("joi");
 const { tokenize } = require("./models/tokenize");
 const { loadModel, predict } = require("./models/model");
-const tokenizer = require("./models/tokenizer.json"); // Load your tokenizer
 const { inverseEncodeEmotion } = require("./models/emotion");
+
+let tokenizer = null;
+
+// Fungsi untuk memuat tokenizer dari URL
+const loadTokenizer = async () => {
+  if (!tokenizer) {
+    const response = await axios.get(process.env.TOKENIZER_URL);
+    tokenizer = response.data;
+  }
+  return tokenizer;
+};
 
 module.exports = [
   {
@@ -24,9 +36,11 @@ module.exports = [
         }),
       },
     },
-    // Di dalam handler Anda, gunakan fungsi inverseEncodeEmotion untuk mendapatkan label emosi dari indeks yang diprediksi
     handler: async (request, h) => {
       const { text } = request.payload;
+
+      // Load the tokenizer
+      await loadTokenizer();
 
       // Tokenize the input text
       const tokens = tokenize(text, tokenizer);
