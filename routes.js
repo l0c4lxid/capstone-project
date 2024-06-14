@@ -78,17 +78,28 @@ module.exports = [
 
         return h
           .response({
-            predict: text,
-            emotion: predictedEmotion,
-            datetime: datetime,
+            Status: 201,
+            Message: "Data saved successfully",
+            Data: {
+              predict: text,
+              emotion: predictedEmotion,
+              datetime: datetime,
+            },
           })
           .code(201);
       } catch (error) {
         console.error("Error processing request:", error);
-        return h.response({ error: "Failed to process request" }).code(500);
+        return h
+          .response({
+            Status: 500,
+            Message: "Failed to process request",
+            Data: {},
+          })
+          .code(500);
       }
     },
   },
+
   {
     method: "POST",
     path: "/api/predictions",
@@ -96,41 +107,69 @@ module.exports = [
       const { predictions } = request.payload;
 
       if (!predictions) {
-        return h.response({ error: "Input not complete" }).code(400);
+        return h
+          .response({
+            Status: 400,
+            Message: "Input not complete",
+            Data: {},
+          })
+          .code(400);
       }
 
-      // Memanggil fungsi generatePrediction dari modul gemini
-      const emotionResponse = await gemini.generatePrediction(predictions);
+      try {
+        // Memanggil fungsi generatePrediction dari modul gemini
+        const emotionResponse = await gemini.generatePrediction(predictions);
 
-      // Menghapus karakter newline dari properti 'emotion'
-      const emotion = emotionResponse
-        .replace(/ \n/g, "")
-        .replace(/\n/g, "")
-        .replace(/\n\n/g, "")
-        .replace(/\n\n\n/g, "");
+        // Menghapus karakter newline dari properti 'emotion'
+        const emotion = emotionResponse
+          .replace(/ \n/g, "")
+          .replace(/\n/g, "")
+          .replace(/\n\n/g, "")
+          .replace(/\n\n\n/g, "");
 
-      // Waktu sekarang
-      const datetime = moment()
-        .tz("Asia/Jakarta")
-        .format("YYYY-MM-DD HH:mm:ss");
+        // Waktu sekarang
+        const datetime = moment()
+          .tz("Asia/Jakarta")
+          .format("YYYY-MM-DD HH:mm:ss");
 
-      // Menyimpan data ke tabel tbl_prediction
-      const query =
-        "INSERT INTO tbl_prediction (predictions, emotion, datetime) VALUES (?, ?, ?)";
-      const values = [predictions, emotion, datetime];
+        // Menyimpan data ke tabel tbl_prediction
+        const query =
+          "INSERT INTO tbl_prediction (predictions, emotion, datetime) VALUES (?, ?, ?)";
+        const values = [predictions, emotion, datetime];
 
-      mysqlConnection.query(query, values, (err) => {
-        if (err) {
-          console.error("Error saving data to MySQL:", err);
-          return h
-            .response({ error: "Failed to save data to MySQL" })
-            .code(500);
-        }
-        console.log("Data saved to MySQL successfully");
-      });
+        await new Promise((resolve, reject) => {
+          mysqlConnection.query(query, values, (err) => {
+            if (err) {
+              console.error("Error saving data to MySQL:", err);
+              return reject(err);
+            }
+            console.log("Data saved to MySQL successfully");
+            resolve();
+          });
+        });
 
-      // Mengembalikan respons JSON tanpa karakter newline
-      return h.response({ predictions, emotion, datetime }).code(201);
+        // Mengembalikan respons JSON tanpa karakter newline
+        return h
+          .response({
+            Status: 201,
+            Message: "Data saved successfully",
+            Data: {
+              predictions,
+              emotion,
+              datetime,
+            },
+          })
+          .code(201);
+      } catch (error) {
+        console.error("Error processing request:", error);
+        return h
+          .response({
+            Status: 500,
+            Message: "Failed to process request",
+            Data: {},
+          })
+          .code(500);
+      }
     },
   },
   // Route GET untuk mendapatkan semua predictions
@@ -167,15 +206,26 @@ module.exports = [
         }));
 
         console.log("Data retrieved from MySQL successfully");
-        return h.response(formattedResults).code(200);
+        return h
+          .response({
+            Status: 200,
+            Message: "Data retrieved successfully",
+            Data: formattedResults,
+          })
+          .code(200);
       } catch (error) {
         console.error("Error retrieving data from MySQL:", error);
         return h
-          .response({ error: "Failed to retrieve data from MySQL" })
+          .response({
+            Status: 500,
+            Message: "Failed to retrieve data from MySQL",
+            Data: {},
+          })
           .code(500);
       }
     },
   },
+
   // Route POST untuk menambahkan rekomendasi
   {
     method: "POST",
@@ -184,7 +234,13 @@ module.exports = [
       const { emotion: emotionResponse } = request.payload;
 
       if (!emotionResponse) {
-        return h.response({ error: "Input not complete" }).code(400);
+        return h
+          .response({
+            Status: 400,
+            Message: "Input not complete",
+            Data: {},
+          })
+          .code(400);
       }
 
       try {
@@ -251,13 +307,26 @@ module.exports = [
           });
         });
 
-        return h.response(responsePayload).code(201);
+        return h
+          .response({
+            Status: 201,
+            Message: "Data saved successfully",
+            Data: responsePayload,
+          })
+          .code(201);
       } catch (error) {
         console.error("Error processing request:", error);
-        return h.response({ error: "Failed to process request" }).code(500);
+        return h
+          .response({
+            Status: 500,
+            Message: "Failed to process request",
+            Data: {},
+          })
+          .code(500);
       }
     },
   },
+
   // Route GET untuk mendapatkan semua rekomendasi
   {
     method: "GET",
@@ -292,11 +361,21 @@ module.exports = [
         }));
 
         console.log("Data retrieved from MySQL successfully");
-        return h.response(formattedResults).code(200);
+        return h
+          .response({
+            Status: 200,
+            Message: "Data retrieved successfully",
+            Data: formattedResults,
+          })
+          .code(200);
       } catch (error) {
         console.error("Error retrieving data from MySQL:", error);
         return h
-          .response({ error: "Failed to retrieve data from MySQL" })
+          .response({
+            Status: 500,
+            Message: "Failed to retrieve data from MySQL",
+            Data: {},
+          })
           .code(500);
       }
     },
@@ -309,7 +388,13 @@ module.exports = [
       const { chat: chatInput } = request.payload;
 
       if (!chatInput) {
-        return h.response({ error: "Input not complete" }).code(400);
+        return h
+          .response({
+            Status: 400,
+            Message: "Input not complete",
+            Data: {},
+          })
+          .code(400);
       }
 
       try {
@@ -327,12 +412,24 @@ module.exports = [
           .format("YYYY-MM-DD HH:mm:ss");
 
         return h
-          .response({ chat: chatInput, result_chat: resultChat, datetime })
+          .response({
+            Status: 201,
+            Message: "Chat response generated successfully",
+            Data: {
+              chat: chatInput,
+              result_chat: resultChat,
+              datetime,
+            },
+          })
           .code(201);
       } catch (error) {
         console.error("Error generating chat response:", error);
         return h
-          .response({ error: "Failed to generate chat response" })
+          .response({
+            Status: 500,
+            Message: "Failed to generate chat response",
+            Data: {},
+          })
           .code(500);
       }
     },
