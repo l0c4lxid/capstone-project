@@ -251,7 +251,12 @@ module.exports = [
           .replace(/\s+/g, " ") // Menghapus spasi ganda
           .replace(/\s\s+/g, " "); // Menghapus spasi ganda
 
-        let responsePayload = { emotion };
+        let responsePayload = {
+          emotion,
+          recommendation: "",
+          articles: [],
+          datetime: "",
+        };
 
         // Dapatkan rekomendasi menggunakan API
         const { recommendation } = await generateRecomendation(emotion);
@@ -261,13 +266,17 @@ module.exports = [
         // Dapatkan link tambahan dari recommendationsData jika tersedia
         if (recommendationsData.hasOwnProperty(emotion.toLowerCase())) {
           const recData = recommendationsData[emotion.toLowerCase()];
-          recData.forEach((item, index) => {
-            responsePayload[`title_${index + 1}`] = item.title;
-            responsePayload[`link_${index + 1}`] = item.url;
+          recData.forEach((item) => {
+            responsePayload.articles.push({
+              title: item.title,
+              link: item.url,
+            });
           });
         } else {
-          responsePayload.title_1 = "No specific recommendation";
-          responsePayload.link_1 = "No specific link";
+          responsePayload.articles.push({
+            title: "No specific recommendation",
+            link: "No specific link",
+          });
         }
 
         const datetime = moment()
@@ -279,20 +288,16 @@ module.exports = [
         const query =
           "INSERT INTO tbl_recommendations (emotion, recommendation, link, datetime) VALUES (?, ?, ?, ?)";
 
-        // Prepare link object
-        const linkObject = {};
-        for (let i = 1; i <= 5; i++) {
-          linkObject[`title_${i}`] = responsePayload[`title_${i}`];
-          linkObject[`link_${i}`] = responsePayload[`link_${i}`];
-        }
+        // Prepare articles array
+        const articlesArray = responsePayload.articles;
 
-        // Convert link object to JSON string
-        const linkString = JSON.stringify(linkObject);
+        // Convert articles array to JSON string
+        const articlesString = JSON.stringify(articlesArray);
 
         const values = [
           emotion,
           recommendation,
-          linkString, // Save link object as JSON string
+          articlesString, // Save articles array as JSON string
           datetime,
         ];
 
