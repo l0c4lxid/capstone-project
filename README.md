@@ -54,7 +54,6 @@ This project is a recommendation system built using Node.js for the Capstone Pro
 ## Development
 
 - Run the server with `npm run start`.
-- Run the development server with `npm run start:dev`.
 - The server will run on `http://localhost:3000`.
 
 ## Dependencies
@@ -64,5 +63,5 @@ This project is a recommendation system built using Node.js for the Capstone Pro
 - [axios](https://www.npmjs.com/package/axios): For making HTTP requests.
 - [dotenv](https://www.npmjs.com/package/dotenv): For loading environment variables.
 - [moment-timezone](https://www.npmjs.com/package/moment-timezone): For handling timezones.
-- [mysql](https://www.npmjs.com/package/mysql): For interacting with MySQL database.
+- [google-cloud/firestore](https://www.npmjs.com/package/@google-cloud/firestore): For interacting with Firebase services.
 - [nodemon](https://www.npmjs.com/package/nodemon): For automatic server restarts during development.
