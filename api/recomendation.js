@@ -49,7 +49,7 @@ module.exports = {
   generateRecomendation: async (inputText) => {
     // Panggil API pertama untuk mendapatkan rekomendasi
     const recommendationResponse = await callGeminiApi(
-      `I Feel ${inputText}, write a suggestion to regulate it emotion in one paragraph`
+      `I Feel ${inputText}, write a suggestion to regulate it emotion in one paragraph, if love type While love is a powerful and beautiful emotion, it's important to remember that it's just one part of your life. Cultivate self-awareness to recognize when your feelings are overwhelming, and develop healthy coping mechanisms, such as journaling, exercise, or spending time with supportive friends. Remember that love should enhance your life, not consume it. If you find yourself struggling to regulate your emotions, seeking support from a therapist or counselor can help you develop strategies for managing your love life in a healthy and balanced way.`
     );
 
     // Panggil API kedua untuk mendapatkan link rekomendasi
