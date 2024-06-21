@@ -107,9 +107,9 @@ module.exports = [
     method: "POST",
     path: "/api/predictions",
     handler: async (request, h) => {
-      const { predictions } = request.payload;
+      const { text } = request.payload;
 
-      if (!predictions) {
+      if (!text) {
         return h
           .response({
             Status: 400,
@@ -121,7 +121,7 @@ module.exports = [
 
       try {
         // Memanggil fungsi generatePrediction dari modul gemini
-        const emotionResponse = await gemini.generatePrediction(predictions);
+        const emotionResponse = await gemini.generatePrediction(text);
 
         // Menghapus karakter newline dari properti 'emotion'
         const emotion = emotionResponse
@@ -137,7 +137,7 @@ module.exports = [
 
         // Menyimpan data ke Firestore
         const docRef = await db.collection("predictions").add({
-          predictions,
+          text,
           emotion,
           datetime,
         });
@@ -151,7 +151,7 @@ module.exports = [
             Status: 201,
             Message: "Data saved successfully",
             Data: {
-              predictions,
+              text,
               emotion,
               datetime,
             },
@@ -169,6 +169,7 @@ module.exports = [
       }
     },
   },
+
   {
     method: "GET",
     path: "/predictions",

@@ -48,7 +48,7 @@ async function callGeminiApi(inputText) {
 module.exports = {
   generatePrediction: async (inputText) => {
     const response = await callGeminiApi(
-      `What I do today is ${inputText}, try to guess my emotions in my one word, which must be in empty, sadness, enthusiasm, neutral, surprise, love, fun, happiness, boredom, relief, anger. remember answer the question only one word.`
+      `What I do today is ${inputText}, try to guess my emotions in my one word, which must be in sadness, love, happiness, worry, anger. remember answer the question only one word.`
     );
     return response;
   },
